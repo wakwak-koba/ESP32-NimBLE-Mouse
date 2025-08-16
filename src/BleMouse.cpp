@@ -1,6 +1,7 @@
 #include "BleMouse.h"
 
 #include <NimBLEDevice.h>
+#include "HIDTypes.h"
 
 #include "sdkconfig.h"
 
@@ -62,28 +63,23 @@ BleMouse::BleMouse(std::string deviceName, std::string deviceManufacturer, uint8
 
 void BleMouse::begin(void) {
     NimBLEDevice::init(deviceName);
+    BLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
 
     NimBLEServer *pServer = NimBLEDevice::createServer();
     pServer->setCallbacks(this);
 
     hid        = new NimBLEHIDDevice(pServer);
-    inputMouse = hid->inputReport(0);  // <-- input REPORTID from report map
+    inputMouse = hid->getInputReport(0);  // <-- input REPORTID from report map
 
-    hid->manufacturer()->setValue(deviceManufacturer);
-
-    hid->pnp(0x02, 0xe502, 0xa111, 0x0210);
-    hid->hidInfo(0x00, 0x02);
-
-    BLESecurity *pSecurity = new NimBLESecurity();
-
-    pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
-
-    hid->reportMap((uint8_t *)_hidReportDescriptor, sizeof(_hidReportDescriptor));
+    hid->setManufacturer(deviceManufacturer);
+    hid->setPnp(0x02, 0xe502, 0xa111, 0x0210);
+    hid->setHidInfo(0x00, 0x02);
+    hid->setReportMap((uint8_t *)_hidReportDescriptor, sizeof(_hidReportDescriptor));
     hid->startServices();
 
     NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
     pAdvertising->setAppearance(HID_MOUSE);
-    pAdvertising->addServiceUUID(hid->hidService()->getUUID());
+    pAdvertising->addServiceUUID(hid->getHidService()->getUUID());
     pAdvertising->start();
     hid->setBatteryLevel(batteryLevel);
 }

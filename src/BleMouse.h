@@ -3,6 +3,7 @@
 #include "sdkconfig.h"
 #if defined(CONFIG_BT_ENABLED)
 
+#include <NimBLEServer.h>
 #include <NimBLECharacteristic.h>
 #include <NimBLEHIDDevice.h>
 

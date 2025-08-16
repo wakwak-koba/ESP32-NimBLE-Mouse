@@ -1,0 +1,17 @@
+{
+  "name": "ESP32 BLE Mouse",
+  "version": "0.3.1",
+  "description": "Bluetooth LE Mouse library for the ESP32.",
+  "keywords": "Bluetooth, BLE, HID, Mouse",
+  "platforms": "espressif32",
+  "frameworks": "arduino",
+  "dependencies": [
+    {
+      "name": "NimBLE-Arduino",
+      "version": "^1.4.1",
+      "platforms": [
+        "espressif32"
+      ]
+    }
+  ]
+}

@@ -35,8 +35,8 @@ class BleMouse : protected NimBLEServerCallbacks {
   protected:
     void buttons(uint8_t b);
     void rawAction(uint8_t msg[], char msgSize);
-    void onConnect(NimBLEServer* pServer);
-    void onDisconnect(NimBLEServer* pServer);
+    void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override;
+    void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override;
 
   protected:
     uint8_t               _buttons;

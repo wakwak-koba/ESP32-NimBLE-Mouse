@@ -138,12 +138,12 @@ void BleMouse::setBatteryLevel(uint8_t level) {
         this->hid->setBatteryLevel(this->batteryLevel);
 }
 
-void BleMouse::onConnect(NimBLEServer *pServer) {
+void BleMouse::onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) {
     connected = true;
     if (connectCallback) connectCallback();
 }
 
-void BleMouse::onDisconnect(NimBLEServer *pServer) {
+void BleMouse::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
     connected = false;
     if (disconnectCallback) disconnectCallback();
 }

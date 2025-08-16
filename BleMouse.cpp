@@ -140,31 +140,24 @@ void BleMouse::setBatteryLevel(uint8_t level) {
 void BleMouse::taskServer(void* pvParameter) {
   BleMouse* bleMouseInstance = (BleMouse *) pvParameter; //static_cast<BleMouse *>(pvParameter);
   NimBLEDevice::init(bleMouseInstance->deviceName);
+  BLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
 
   NimBLEServer *pServer = NimBLEDevice::createServer();
   pServer->setCallbacks(bleMouseInstance->connectionStatus);
 
   bleMouseInstance->hid = new NimBLEHIDDevice(pServer);
-  bleMouseInstance->inputMouse = bleMouseInstance->hid->inputReport(0); // <-- input REPORTID from report map
+  bleMouseInstance->inputMouse = bleMouseInstance->hid->getInputReport(0); // <-- input REPORTID from report map
   bleMouseInstance->connectionStatus->inputMouse = bleMouseInstance->inputMouse;
-
-  bleMouseInstance->hid->manufacturer()->setValue(bleMouseInstance->deviceManufacturer);
-
-  bleMouseInstance->hid->pnp(0x02, 0xe502, 0xa111, 0x0210);
-  bleMouseInstance->hid->hidInfo(0x00,0x02);
-
-  BLESecurity *pSecurity = new NimBLESecurity();
-
-  pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
-
-  bleMouseInstance->hid->reportMap((uint8_t*)_hidReportDescriptor, sizeof(_hidReportDescriptor));
+  bleMouseInstance->hid->setManufacturer(bleMouseInstance->deviceManufacturer);
+  bleMouseInstance->hid->setPnp(0x02, 0xe502, 0xa111, 0x0210);
+  bleMouseInstance->hid->setHidInfo(0x00,0x02);
+  bleMouseInstance->hid->setReportMap((uint8_t*)_hidReportDescriptor, sizeof(_hidReportDescriptor));
   bleMouseInstance->hid->startServices();
-
   bleMouseInstance->onStarted(pServer);
 
   NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
   pAdvertising->setAppearance(HID_MOUSE);
-  pAdvertising->addServiceUUID(bleMouseInstance->hid->hidService()->getUUID());
+  pAdvertising->addServiceUUID(bleMouseInstance->hid->getHidService()->getUUID());
   pAdvertising->start();
   bleMouseInstance->hid->setBatteryLevel(bleMouseInstance->batteryLevel);
 

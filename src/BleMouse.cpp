@@ -62,6 +62,18 @@ BleMouse::BleMouse(std::string deviceName, std::string deviceManufacturer, uint8
 }
 
 void BleMouse::begin(void) {
+    ending = false;
+
+    // The BLE stack and its GATT services can only be registered once. A second
+    // begin() used to create another set of HID services on the same server,
+    // while the host kept using the previously subscribed handle, which left the
+    // device "connected" but no longer sending any report.
+    if (begun) {
+        startAdvertising();
+        return;
+    }
+    begun = true;
+
     NimBLEDevice::init(deviceName);
     BLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND);
 
@@ -77,14 +89,61 @@ void BleMouse::begin(void) {
     hid->setReportMap((uint8_t *)_hidReportDescriptor, sizeof(_hidReportDescriptor));
     hid->startServices();
 
-    NimBLEAdvertising *pAdvertising = pServer->getAdvertising();
+    // The advertisement data only needs to be set up once, otherwise every call
+    // appends another copy of the same service UUID.
+    NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->setAppearance(HID_MOUSE);
     pAdvertising->addServiceUUID(hid->getHidService()->getUUID());
-    pAdvertising->start();
+
+    startAdvertising();
     hid->setBatteryLevel(batteryLevel);
 }
 
+void BleMouse::startAdvertising(void) {
+    NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
+    if (pAdvertising == nullptr || pAdvertising->isAdvertising()) {
+        return;
+    }
+
+    pAdvertising->start();
+}
+
 void BleMouse::end(void) {
+    if (!begun) {
+        return;
+    }
+
+    // Mark this as an intentional teardown so onDisconnect() does not restart
+    // advertising and let the host reconnect right away.
+    ending = true;
+
+    // Release pressed buttons first, otherwise the host keeps them latched.
+    if (_buttons != 0) {
+        _buttons = 0;
+        move(0, 0, 0, 0);
+    }
+
+    // Stop advertising before dropping the link.
+    NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
+    if (pAdvertising != nullptr) {
+        pAdvertising->stop();
+    }
+
+    NimBLEServer *pServer = NimBLEDevice::getServer();
+    if (pServer != nullptr) {
+        std::vector<uint16_t> peers = pServer->getPeerDevices();
+        for (auto handle : peers) {
+            pServer->disconnect(handle);
+        }
+
+        // Give the host a moment to notice that the link is gone.
+        uint32_t startMs = millis();
+        while (pServer->getConnectedCount() > 0 && (millis() - startMs) < 500) {
+            delay(10);
+        }
+    }
+
+    connected = false;
 }
 
 void BleMouse::click(uint8_t b) {
@@ -145,6 +204,13 @@ void BleMouse::onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) {
 
 void BleMouse::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
     connected = false;
+
+    // Stay discoverable after an unexpected disconnect (host out of range, host
+    // initiated disconnect) so the host can reconnect without pairing again.
+    if (!ending) {
+        startAdvertising();
+    }
+
     if (disconnectCallback) disconnectCallback();
 }
 

@@ -34,6 +34,7 @@ class BleMouse : protected NimBLEServerCallbacks {
 
   protected:
     void buttons(uint8_t b);
+    void startAdvertising(void);
     void rawAction(uint8_t msg[], char msgSize);
     void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override;
     void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override;
@@ -47,6 +48,8 @@ class BleMouse : protected NimBLEServerCallbacks {
     std::string deviceManufacturer;
     std::string deviceName;
     bool        connected = false;
+    bool        begun     = false;  // the BLE stack can be initialized only once
+    bool        ending    = false;  // true while end() is tearing the link down
 
     Callback connectCallback    = nullptr;
     Callback disconnectCallback = nullptr;
